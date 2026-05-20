@@ -1,24 +1,32 @@
 @startuml SeqUC02_CreaHackathon
-title Diagramma di Sequenza - UC02 Crea Hackathon\nPattern coinvolti: Factory Method (NotificaPublisher), Observer, State (inizializzazione)
+title Diagramma di Sequenza — UC02 Crea Hackathon\nPattern coinvolti: State (inizializzazione), Observer, Factory Method
 
+' ----- Convenzioni di rendering -----
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam sequenceMessageAlign center
 skinparam sequence {
   ArrowColor              #2C3E50
   LifeLineBorderColor     #2C3E50
   ParticipantBorderColor  #2C3E50
   ActorBorderColor        #2C3E50
+  ParticipantFontSize     11
   ParticipantBackgroundColor<<boundary>> #E3F2FD
   ParticipantBackgroundColor<<control>>  #FFF8E1
   ParticipantBackgroundColor<<entity>>   #E8F5E9
+  ParticipantBackgroundColor<<state>>    #FFF3E0
+  ParticipantBackgroundColor<<observer>> #E1F5FE
+  ParticipantBackgroundColor<<factory>>  #F3E5F5
 }
 
-actor      "Organizzatore"                              as Org
-boundary   ":CreaHackathonBoundary"                     as B  <<boundary>>
-control    ":CreaHackathonControl"                      as C  <<control>>
-entity     ":HackHub"                                   as Hub <<entity>>
-entity     "h:Hackathon"                                as H   <<entity>>
-participant "<<State>>\n:InIscrizione"                   as S
-participant "<<Observer>>\npub:NotificaPublisher"        as Pub
-participant "<<Factory Method>>\n:NotificaConsole"       as Fac
+actor       "Organizzatore"             as Org
+participant ":CreaHackathonBoundary"    as B   <<boundary>>
+participant ":CreaHackathonControl"     as C   <<control>>
+participant ":HackHub"                  as Hub <<entity>>
+participant "h:Hackathon"               as H   <<entity>>
+participant ":InIscrizione"             as S   <<state>>
+participant "pub:NotificaPublisher"     as Pub <<observer>>
+participant ":NotificaConsole"          as Fac <<factory>>
 
 == Apertura form ==
 
@@ -27,9 +35,9 @@ activate B
 B  --> Org : mostraForm()
 deactivate B
 
-== Inserimento e conferma ==
+== Inserimento, validazione e creazione ==
 
-Org -> B  : inserisciDati(nome, regolamento, scadenzaIscrizioni,\n dataInizio, dataFine, luogo, premio,\n maxTeam, idGiudice, idMentori)
+Org -> B  : inserisciDati(nome, regolamento,\n  scadenzaIscrizioni, dataInizio, dataFine, luogo,\n  premio, maxTeam, idGiudice, idMentori)
 activate B
 B  -> C  : creaHackathon(dati)
 activate C
@@ -48,30 +56,18 @@ alt dati validi
     Hub --> C : ok
     deactivate Hub
 
-    == Pattern Observer: notifica HACKATHON_CREATO ==
+    == Pattern Observer + Factory Method ==
 
-    C  -> H  : notifica(HACKATHON_CREATO)
+    C  -> H  : notifica(HACKATHON_CREATO, payload)
     activate H
-    H  -> Pub : aggiorna(evento)
+    H  -> Pub : aggiorna(this, HACKATHON_CREATO, payload)
     activate Pub
-
-    note right of Pub
-      **Factory Method** — il publisher
-      delega la **creazione del prodotto**
-      ``Notifica`` alla propria sottoclasse
-      concreta (``NotificaConsole``).
-      Il publisher è anche un
-      **Observer** registrato sul soggetto
-      ``Hackathon``.
-    end note
-
-    Pub -> Fac : creaNotifica(evento, destinatari)
+    Pub -> Fac : creaNotifica(evento, destinatario, contenuto)
     activate Fac
     create "n:Notifica" as N
     Fac -> N : <<create>>
     Fac --> Pub : n
     deactivate Fac
-
     Pub -> N : invia()
     deactivate Pub
     deactivate H
@@ -88,11 +84,15 @@ else dati non validi
 end
 
 note over S
-  **State** — l'Hackathon nasce sempre
-  con stato concreto ``InIscrizione``.
-  Le transizioni successive
-  (avvia/apriValutazione/concludi)
-  saranno gestite dagli state stessi.
+  **State** — l'Hackathon nasce in stato concreto ``InIscrizione``.
+  Le transizioni (avvia / apriValutazione / concludi)
+  sono gestite poi dagli state stessi.
+end note
+
+note over Pub, Fac
+  **Factory Method**: il publisher è anche un **Observer**;
+  delega la creazione del prodotto ``Notifica``
+  alla propria sottoclasse concreta (``NotificaConsole``).
 end note
 
 @enduml

@@ -1,26 +1,34 @@
 @startuml SeqUC05_ValutaSottomissione
-title Diagramma di Sequenza - UC05 Valuta Sottomissione\nPattern coinvolti: State (verifica), Strategy (calcolo punteggio), Observer (VALUTAZIONI_COMPLETE)
+title Diagramma di Sequenza — UC05 Valuta Sottomissione\nPattern coinvolti: State (verifica), Strategy (calcolo punteggio), Observer (VALUTAZIONI_COMPLETE)
 
+' ----- Convenzioni di rendering -----
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam sequenceMessageAlign center
 skinparam sequence {
   ArrowColor              #2C3E50
   LifeLineBorderColor     #2C3E50
   ParticipantBorderColor  #2C3E50
   ActorBorderColor        #2C3E50
-  ParticipantBackgroundColor<<boundary>> #E3F2FD
-  ParticipantBackgroundColor<<control>>  #FFF8E1
-  ParticipantBackgroundColor<<entity>>   #E8F5E9
+  ParticipantFontSize     11
+  ParticipantBackgroundColor<<boundary>>  #E3F2FD
+  ParticipantBackgroundColor<<control>>   #FFF8E1
+  ParticipantBackgroundColor<<entity>>    #E8F5E9
+  ParticipantBackgroundColor<<state>>     #FFF3E0
+  ParticipantBackgroundColor<<strategy>>  #FCE4EC
+  ParticipantBackgroundColor<<observer>>  #E1F5FE
 }
 
-actor      "Giudice"                                       as Giu
-boundary   ":ValutaSottomissioneBoundary"                  as B    <<boundary>>
-control    ":ValutaSottomissioneControl"                   as C    <<control>>
-entity     ":HackHub"                                      as Hub  <<entity>>
-entity     "h:Hackathon"                                   as H    <<entity>>
-participant "<<State>>\nstato:StatoHackathon"               as S
-entity     "s:Sottomissione"                               as Sub  <<entity>>
-entity     "v:Valutazione"                                 as V    <<entity>>
-participant "<<Strategy>>\nstr:StrategiaPunteggio"          as Str
-participant "<<Observer>>\npub:NotificaPublisher"           as Pub
+actor       "Giudice"                       as Giu
+participant ":ValutaSottomissioneBoundary"  as B    <<boundary>>
+participant ":ValutaSottomissioneControl"   as C    <<control>>
+participant ":HackHub"                      as Hub  <<entity>>
+participant "h:Hackathon"                   as H    <<entity>>
+participant "stato:StatoHackathon"          as S    <<state>>
+participant "s:Sottomissione"               as Sub  <<entity>>
+participant "v:Valutazione"                 as V    <<entity>>
+participant "str:StrategiaPunteggio"        as Str  <<strategy>>
+participant "pub:NotificaPublisher"         as Pub  <<observer>>
 
 == Lista sottomissioni da valutare ==
 
@@ -41,7 +49,7 @@ deactivate C
 B  --> Giu : mostraLista(lista)
 deactivate B
 
-== Selezione e inserimento valutazione ==
+== Inserimento valutazione ==
 
 Giu -> B : selezionaSottomissione(idS)
 activate B
@@ -53,8 +61,6 @@ activate B
 B  -> C : valuta(idS, giudice, punteggio, giudizioScritto)
 activate C
 
-== Pattern State: ammette la valutazione? ==
-
 C  -> H : puoiValutare()
 activate H
 H  -> S : puoiValutare()
@@ -64,8 +70,7 @@ deactivate S
 H  --> C : esito
 deactivate H
 
-alt esito = true (stato = InValutazione)
-
+alt stato = InValutazione
     C  -> C  : verificaRange(punteggio)\n[0..10]
 
     alt range valido
@@ -84,23 +89,13 @@ alt esito = true (stato = InValutazione)
 
         Sub -> Str : calcola(valutazioni)
         activate Str
-
-        note right of Str
-          **Strategy** — l'algoritmo è
-          intercambiabile a runtime
-          (default: ``MediaSemplice``).
-          ``Sottomissione`` non conosce
-          la formula, solo l'interfaccia
-          ``StrategiaPunteggio``.
-        end note
-
         Str --> Sub : punteggioAggregato
         deactivate Str
 
         Sub -> Sub : aggiornaPunteggioAggregato(p)
         deactivate Sub
 
-        == Pattern Observer: ultima valutazione → VALUTAZIONI_COMPLETE ==
+        == Eventuale VALUTAZIONI_COMPLETE ==
 
         C  -> H : tutteSottomissioniValutate()
         activate H
@@ -108,9 +103,9 @@ alt esito = true (stato = InValutazione)
         deactivate H
 
         opt flag = true
-            C  -> H : notifica(VALUTAZIONI_COMPLETE)
+            C  -> H : notifica(VALUTAZIONI_COMPLETE, null)
             activate H
-            H  -> Pub : aggiorna(VALUTAZIONI_COMPLETE, h)
+            H  -> Pub : aggiorna(this, VALUTAZIONI_COMPLETE, null)
             activate Pub
             Pub --> H : ok
             deactivate Pub
@@ -123,12 +118,18 @@ alt esito = true (stato = InValutazione)
         C  --> B : esitoErrore("Punteggio fuori range 0..10")
         B  --> Giu : mostraErrore(...)
     end
-else stato non ammette
+else stato ≠ InValutazione
     C  --> B : esitoErrore("Hackathon non in valutazione")
     B  --> Giu : mostraErrore(...)
 end
 
 deactivate C
 deactivate B
+
+note over Str
+  **Strategy** — l'algoritmo è intercambiabile a runtime
+  (default: ``MediaSemplice``). ``Sottomissione`` non conosce
+  la formula, solo l'interfaccia ``StrategiaPunteggio``.
+end note
 
 @enduml

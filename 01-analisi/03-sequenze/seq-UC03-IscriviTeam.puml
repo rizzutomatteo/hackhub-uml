@@ -1,24 +1,31 @@
 @startuml SeqUC03_IscriviTeam
-title Diagramma di Sequenza - UC03 Iscrivi Team a Hackathon\nPattern coinvolti: State (verifica), Observer (TEAM_ISCRITTO)
+title Diagramma di Sequenza — UC03 Iscrivi Team a Hackathon\nPattern coinvolti: State (verifica), Observer (TEAM_ISCRITTO)
 
+' ----- Convenzioni di rendering -----
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam sequenceMessageAlign center
 skinparam sequence {
   ArrowColor              #2C3E50
   LifeLineBorderColor     #2C3E50
   ParticipantBorderColor  #2C3E50
   ActorBorderColor        #2C3E50
+  ParticipantFontSize     11
   ParticipantBackgroundColor<<boundary>> #E3F2FD
   ParticipantBackgroundColor<<control>>  #FFF8E1
   ParticipantBackgroundColor<<entity>>   #E8F5E9
+  ParticipantBackgroundColor<<state>>    #FFF3E0
+  ParticipantBackgroundColor<<observer>> #E1F5FE
 }
 
-actor      "Membro Team"                                 as MT
-boundary   ":IscriviTeamBoundary"                        as B   <<boundary>>
-control    ":IscriviTeamControl"                         as C   <<control>>
-entity     ":HackHub"                                    as Hub <<entity>>
-entity     "h:Hackathon"                                 as H   <<entity>>
-participant "<<State>>\nstato:StatoHackathon"             as S
-entity     "t:Team"                                      as T   <<entity>>
-participant "<<Observer>>\npub:NotificaPublisher"         as Pub
+actor       "Membro Team"               as MT
+participant ":IscriviTeamBoundary"      as B   <<boundary>>
+participant ":IscriviTeamControl"       as C   <<control>>
+participant ":HackHub"                  as Hub <<entity>>
+participant "h:Hackathon"               as H   <<entity>>
+participant "stato:StatoHackathon"      as S   <<state>>
+participant "t:Team"                    as T   <<entity>>
+participant "pub:NotificaPublisher"     as Pub <<observer>>
 
 == Selezione hackathon ==
 
@@ -26,7 +33,7 @@ MT -> B : richiediHackathonDisponibili()
 activate B
 B  -> C : elencaHackathonInIscrizione()
 activate C
-C  -> Hub : trovaHackathonInIscrizione()
+C  -> Hub : hackathonInIscrizione()
 activate Hub
 Hub --> C : lista
 deactivate Hub
@@ -35,12 +42,12 @@ deactivate C
 B  --> MT : mostraLista(lista)
 deactivate B
 
+== Iscrizione ==
+
 MT -> B : selezionaHackathon(idH)
 activate B
 B  -> C : richiediIscrizione(idH, utente)
 activate C
-
-== Risale al team del membro ==
 
 C  -> Hub : trovaTeamDi(utente)
 activate Hub
@@ -57,8 +64,6 @@ activate Hub
 Hub --> C : h
 deactivate Hub
 
-== Pattern State: verifica se è ammessa l'iscrizione ==
-
 C  -> H : puoiIscrivereTeam()
 activate H
 H  -> S : puoiIscrivereTeam()
@@ -69,13 +74,6 @@ H  --> C : esito
 deactivate H
 
 alt iscrizioni ammesse
-    note right of S
-      **State** — solo lo stato concreto
-      ``InIscrizione`` ritorna ``true``;
-      tutti gli altri stati ritornano ``false``
-      grazie al default in ``StatoHackathon``.
-    end note
-
     C  -> H : verificaScadenza(adesso)
     activate H
     H  --> C : entroScadenza
@@ -91,11 +89,8 @@ alt iscrizioni ammesse
         activate H
         H  -> H : aggiungiPartecipante(t)
 
-        == Pattern Observer: notifica TEAM_ISCRITTO ==
-
-        H  -> Pub : aggiorna(TEAM_ISCRITTO, h, t)
+        H  -> Pub : aggiorna(this, TEAM_ISCRITTO, t)
         activate Pub
-        Pub -> Pub : creaNotifica(evento)\nnote: vedi UC02
         Pub --> H : ok
         deactivate Pub
 
@@ -114,5 +109,10 @@ end
 
 deactivate C
 deactivate B
+
+note over S
+  **State** — solo ``InIscrizione`` ritorna ``true``;
+  gli altri stati ereditano ``false`` dal default in ``StatoHackathon``.
+end note
 
 @enduml

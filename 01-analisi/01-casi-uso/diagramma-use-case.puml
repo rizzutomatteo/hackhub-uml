@@ -1,34 +1,40 @@
 @startuml DiagrammaCasiUso_HackHub
-title Diagramma dei Casi d'Uso - HackHub (1a iterazione)
+title Diagramma dei Casi d'Uso — HackHub (1a iterazione)
+
+' ============================================================================
+'  Convenzioni di rendering
+' ============================================================================
+skinparam nodesep 35
+skinparam ranksep 45
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam packageStyle rectangle
 
 skinparam usecase {
   BackgroundColor #FDFDFD
-  BorderColor #2C3E50
-  ArrowColor #2C3E50
+  BorderColor     #2C3E50
+  ArrowColor      #2C3E50
+  FontSize        11
 }
 skinparam actor {
   BackgroundColor #ECF0F1
-  BorderColor #2C3E50
+  BorderColor     #2C3E50
 }
-skinparam packageStyle rectangle
 
 left to right direction
 
-' =====================  ATTORI  =====================
+' ============================================================================
+'  ATTORI PRIMARI (lato sinistro) — disposti per gerarchia
+' ============================================================================
+actor "Visitatore"    as Vis
+actor "Utente"        as Ute
+actor "Membro Team"   as MT
+actor "Membro Staff"  as MS
+actor "Organizzatore" as Org
+actor "Giudice"       as Giu
+actor "Mentore"       as Men
 
-actor "Visitatore"           as Vis
-actor "Utente"               as Ute
-actor "Membro Team"          as MT
-actor "Membro Staff"         as MS
-actor "Organizzatore"        as Org
-actor "Giudice"              as Giu
-actor "Mentore"              as Men
-
-' Attori esterni / sistemi (lato destro)
-actor "Calendar"             as Cal  <<external>>
-actor "Sistema di Pagamento" as Pag  <<external>>
-
-' Gerarchia attori (generalizzazione)
+' Generalizzazione attori
 Vis <|-- Ute
 Ute <|-- MT
 Ute <|-- MS
@@ -36,106 +42,145 @@ MS  <|-- Org
 MS  <|-- Giu
 MS  <|-- Men
 
-' =====================  SYSTEM BOUNDARY  =====================
-
+' ============================================================================
+'  SYSTEM BOUNDARY — UC raggruppati per area funzionale
+' ============================================================================
 rectangle "HackHub" {
 
-  ' --- Visitatore / Autenticazione ---
-  usecase "UC01\nRegistrazione"                   as UC01
-  usecase "UC06\nAutenticazione"                  as UC06
-  usecase "UC07\nConsulta Hackathon\nPubblici"    as UC07
+  ' --- Auth & Visitatore ---
+  together {
+    usecase "UC01\nRegistrazione"                  as UC01
+    usecase "UC06\nAutenticazione"                 as UC06
+    usecase "UC07\nConsulta Hackathon\nPubblici"   as UC07
+  }
 
-  ' --- Organizzatore ---
-  usecase "**UC02**\n**Crea Hackathon**"          as UC02 #FFE082
-  usecase "UC08\nAggiungi Mentore"                as UC08
-  usecase "UC09\nProclama Vincitore"              as UC09
-  usecase "UC10\nEroga Premio"                    as UC10
+  ' --- Gestione Team (Utente / Membro Team) ---
+  together {
+    usecase "UC11\nCrea Team"                      as UC11
+    usecase "UC12\nInvita Membri\nal Team"         as UC12
+    usecase "UC13\nAccetta Invito"                 as UC13
+    usecase "UC14\nRifiuta Invito"                 as UC14
+  }
 
-  ' --- Utente / Membro Team ---
-  usecase "UC11\nCrea Team"                       as UC11
-  usecase "UC12\nInvita Membri al Team"           as UC12
-  usecase "UC13\nAccetta Invito Team"             as UC13
-  usecase "UC14\nRifiuta Invito Team"             as UC14
-  usecase "**UC03**\n**Iscrivi Team**\n**a Hackathon**" as UC03 #FFE082
-  usecase "**UC04**\n**Invia Sottomissione**"     as UC04 #FFE082
-  usecase "UC15\nAggiorna Sottomissione"          as UC15
-  usecase "UC16\nRichiedi Supporto\nal Mentore"   as UC16
+  ' --- Ciclo di vita Hackathon (Organizzatore) ---
+  together {
+    usecase "**UC02**\n**Crea Hackathon**"         as UC02 #FFE082
+    usecase "UC08\nAggiungi Mentore"               as UC08
+    usecase "UC09\nProclama\nVincitore"            as UC09
+    usecase "UC10\nEroga Premio"                   as UC10
+  }
 
-  ' --- Mentore ---
-  usecase "UC17\nVisualizza Richieste\nSupporto"  as UC17
-  usecase "UC18\nProponi Call al Team"            as UC18
-  usecase "UC19\nSegnala Team"                    as UC19
+  ' --- Partecipazione Hackathon (Membro Team) ---
+  together {
+    usecase "**UC03**\n**Iscrivi Team**\n**a Hackathon**" as UC03 #FFE082
+    usecase "**UC04**\n**Invia**\n**Sottomissione**"      as UC04 #FFE082
+    usecase "UC15\nAggiorna\nSottomissione"        as UC15
+    usecase "UC16\nRichiedi Supporto\nal Mentore"  as UC16
+  }
 
-  ' --- Giudice ---
-  usecase "**UC05**\n**Valuta Sottomissione**"    as UC05 #FFE082
+  ' --- Workflow Mentore ---
+  together {
+    usecase "UC17\nVisualizza\nRichieste Supporto" as UC17
+    usecase "UC18\nProponi Call\nal Team"          as UC18
+    usecase "UC19\nSegnala Team"                   as UC19
+  }
 
-  ' --- Membro Staff (generale) ---
-  usecase "UC20\nVisualizza Sottomissioni"        as UC20
-  usecase "UC21\nVisualizza Tutti\ngli Hackathon" as UC21
+  ' --- Valutazione (Giudice) ---
+  usecase "**UC05**\n**Valuta**\n**Sottomissione**" as UC05 #FFE082
 
-  ' --- Transizioni interne (system, non innescate da attori) ---
-  usecase "UC22\nAvvia Hackathon"                 as UC22 <<system>>
-  usecase "UC23\nChiudi Iscrizioni"               as UC23 <<system>>
-  usecase "UC24\nTermina Hackathon"               as UC24 <<system>>
+  ' --- Viste Staff (consultazione) ---
+  together {
+    usecase "UC20\nVisualizza\nSottomissioni"      as UC20
+    usecase "UC21\nVisualizza Tutti\ngli Hackathon" as UC21
+  }
+
+  ' --- Transizioni automatiche di stato (system) ---
+  together {
+    usecase "UC22\nAvvia Hackathon"                as UC22 <<system>>
+    usecase "UC23\nChiudi Iscrizioni"              as UC23 <<system>>
+    usecase "UC24\nTermina Hackathon"              as UC24 <<system>>
+  }
 }
 
-' =====================  ASSOCIAZIONI ATTORE-UC  =====================
+' ============================================================================
+'  SISTEMI ESTERNI (lato destro)
+' ============================================================================
+actor "Calendar"             as Cal <<external>>
+actor "Sistema di Pagamento" as Pag <<external>>
 
+' ============================================================================
+'  ASSOCIAZIONI ATTORE → CASO D'USO
+' ============================================================================
+
+' Visitatore
 Vis --> UC01
 Vis --> UC07
 
+' Utente
 Ute --> UC06
 Ute --> UC11
 Ute --> UC13
 Ute --> UC14
 
-MT  --> UC03
-MT  --> UC04
-MT  --> UC15
-MT  --> UC16
-MT  --> UC12
+' Membro Team
+MT --> UC03
+MT --> UC04
+MT --> UC12
+MT --> UC15
+MT --> UC16
 
+' Organizzatore
 Org --> UC02
 Org --> UC08
 Org --> UC09
 Org --> UC10
 
+' Mentore
 Men --> UC17
 Men --> UC18
 Men --> UC19
 
+' Giudice
 Giu --> UC05
 
-MS  --> UC20
-MS  --> UC21
+' Membro Staff (consultazioni generiche)
+MS --> UC20
+MS --> UC21
 
-' Attori esterni (secondari)
+' Sistemi esterni
 UC18 --> Cal
 UC10 --> Pag
 
-' =====================  INCLUDE / EXTEND  =====================
-
+' ============================================================================
+'  RELAZIONI <<include>> e <<extend>>
+'  (separate visivamente — tutte verso UC06 o tra UC affini)
+' ============================================================================
 UC02 ..> UC06 : <<include>>
 UC03 ..> UC06 : <<include>>
 UC04 ..> UC06 : <<include>>
 UC05 ..> UC06 : <<include>>
 UC09 ..> UC06 : <<include>>
 UC11 ..> UC06 : <<include>>
+
 UC11 ..> UC12 : <<include>>
 UC09 ..> UC10 : <<include>>
 
 UC15 ..> UC04 : <<extend>>\n(entro scadenza)
 
+' ============================================================================
+'  LEGENDA
+' ============================================================================
 legend right
-  ============================
+  ==
   **Legenda**
-  ============================
-  | Stile | Significato |
-  | <#FFE082> giallo | UC implementato 1a iterazione |
-  | <<external>>     | attore esterno |
-  | <<system>>       | transizione interna |
-  ----------------------------
-  Notazione UML 2 standard.
+  ==
+  | Stile          | Significato                       |
+  | <#FFE082> | **UC implementato in 1a iterazione** |
+  | <<external>>   | attore esterno                    |
+  | <<system>>     | transizione automatica di stato   |
+  ----
+  Notazione UML 2 — `<<include>>` e
+  `<<extend>>` con frecce tratteggiate.
 endlegend
 
 @enduml

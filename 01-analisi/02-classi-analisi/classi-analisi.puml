@@ -4,15 +4,23 @@ title Diagramma delle Classi di Analisi (BCE) — HackHub, 1a iterazione
 ' ============================================================================
 '  CONVENZIONI BCE (Jacobson)
 '  ------------------------------------------------------------
-'   <<boundary>>  : interfaccia verso attore / sistema esterno
-'   <<control>>   : orchestra il caso d'uso (uno per UC)
-'   <<entity>>    : oggetto di dominio, persistente o concettuale
+'   <<boundary>>  interfaccia verso attore / sistema esterno
+'   <<control>>   orchestra il caso d'uso (1 per UC)
+'   <<entity>>    oggetto di dominio, persistente o concettuale
 '
 '   Regole di interazione:
-'   - Boundary  <->  Control  (mai Boundary <-> Boundary)
-'   - Control   <->  Entity   (mai Boundary <-> Entity diretta)
-'   - Entity    <->  Entity   (associazioni di dominio)
+'   Boundary <-> Control       (mai Boundary <-> Boundary)
+'   Control  <-> Entity        (mai Boundary <-> Entity diretta)
+'   Entity   <-> Entity        (associazioni di dominio)
 ' ============================================================================
+
+' ----- Convenzioni di rendering -----
+skinparam linetype ortho
+skinparam nodesep 40
+skinparam ranksep 55
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam packageStyle rectangle
 
 skinparam class {
   BackgroundColor<<boundary>>  #E3F2FD
@@ -23,52 +31,63 @@ skinparam class {
   BorderColor<<entity>>        #2E7D32
   BackgroundColor<<actor>>     #ECF0F1
   BorderColor<<actor>>         #2C3E50
+  FontSize                     11
 }
-skinparam packageStyle rectangle
 
-' =====================  ATTORI  =====================
-' (resi `class ... <<actor>>` per compatibilita con i package di classi:
-'  PlantUML rifiuta `actor` keyword se referenziato all'interno di un
-'  package di class diagram. Lo stereotipo <<actor>> mantiene la
-'  semantica e la rendering in Visual Paradigm.)
-
+' ============================================================================
+'  FASCIA 1 — ATTORI (in alto)
+' ============================================================================
 class "Organizzatore" as AOrg <<actor>>
 class "Membro Team"   as AMT  <<actor>>
 class "Giudice"       as AGiu <<actor>>
 
-' =====================  STRATO BOUNDARY / CONTROL (per UC)  =====================
+AOrg -[hidden]right- AMT
+AMT  -[hidden]right- AGiu
 
-package "UC02 — Crea Hackathon" #FAFAFA {
+' ============================================================================
+'  FASCIA 2 — STRATO BOUNDARY + CONTROL (1 package per UC)
+' ============================================================================
+
+package "UC02 — Crea Hackathon" as P02 #FAFAFA {
   class CreaHackathonBoundary  <<boundary>>
   class CreaHackathonControl   <<control>>
-  AOrg --> CreaHackathonBoundary
   CreaHackathonBoundary -- CreaHackathonControl
 }
 
-package "UC03 — Iscrivi Team a Hackathon" #FAFAFA {
+package "UC03 — Iscrivi Team" as P03 #FAFAFA {
   class IscriviTeamBoundary    <<boundary>>
   class IscriviTeamControl     <<control>>
-  AMT --> IscriviTeamBoundary
   IscriviTeamBoundary -- IscriviTeamControl
 }
 
-package "UC04 — Invia Sottomissione" #FAFAFA {
+package "UC04 — Invia Sottomissione" as P04 #FAFAFA {
   class InviaSottomissioneBoundary <<boundary>>
   class InviaSottomissioneControl  <<control>>
-  AMT --> InviaSottomissioneBoundary
   InviaSottomissioneBoundary -- InviaSottomissioneControl
 }
 
-package "UC05 — Valuta Sottomissione" #FAFAFA {
+package "UC05 — Valuta Sottomissione" as P05 #FAFAFA {
   class ValutaSottomissioneBoundary <<boundary>>
   class ValutaSottomissioneControl  <<control>>
-  AGiu --> ValutaSottomissioneBoundary
   ValutaSottomissioneBoundary -- ValutaSottomissioneControl
 }
 
-' =====================  STRATO ENTITY (modello di dominio condiviso)  =====================
+' Forza i 4 package UC in riga orizzontale
+P02 -[hidden]right- P03
+P03 -[hidden]right- P04
+P04 -[hidden]right- P05
 
-package "Dominio (Entity)" #F1F8E9 {
+' Attori → Boundary del proprio UC
+AOrg --> CreaHackathonBoundary
+AMT  --> IscriviTeamBoundary
+AMT  --> InviaSottomissioneBoundary
+AGiu --> ValutaSottomissioneBoundary
+
+' ============================================================================
+'  FASCIA 3 — STRATO ENTITY (Dominio condiviso, in basso)
+' ============================================================================
+
+package "Dominio (Entity)" as DOM #F1F8E9 {
 
   class HackHub <<entity>> {
     nome
@@ -97,9 +116,9 @@ package "Dominio (Entity)" #F1F8E9 {
   }
 
   abstract class MembroStaff <<entity>>
-  class Organizzatore <<entity>>
-  class Giudice <<entity>>
-  class Mentore <<entity>>
+  class Organizzatore        <<entity>>
+  class Giudice              <<entity>>
+  class Mentore              <<entity>>
 
   class Sottomissione <<entity>> {
     titolo
@@ -114,83 +133,82 @@ package "Dominio (Entity)" #F1F8E9 {
     timestamp
   }
 
-  ' --- Generalizzazione ---
-  Utente <|-- MembroStaff
+  ' --- Gerarchia ---
+  Utente      <|-- MembroStaff
   MembroStaff <|-- Organizzatore
   MembroStaff <|-- Giudice
   MembroStaff <|-- Mentore
 
   ' --- Associazioni di dominio ---
-  HackHub "1" *-- "*" Hackathon       : > contiene
-  HackHub "1" *-- "*" Utente          : > registra
+  HackHub "1" *-- "*"    Hackathon     : > contiene
+  HackHub "1" *-- "*"    Utente        : > registra
 
-  Hackathon "*" -- "1"   Organizzatore : creatore   >
-  Hackathon "*" -- "1"   Giudice       : valutatore >
-  Hackathon "*" -- "1..*" Mentore      : staff      >
+  Hackathon "*" -- "1"    Organizzatore : creatore   >
+  Hackathon "*" -- "1"    Giudice       : valutatore >
+  Hackathon "*" -- "1..*" Mentore       : staff      >
 
-  Hackathon "*" -- "*"   Team          : iscrizioni >
+  Hackathon "*" -- "*"    Team          : iscrizioni >
   Team      "*" -- "1..*" Utente        : membri     >
 
-  Hackathon "1" *-- "*" Sottomissione : > raccoglie
-  Team      "1" -- "*"  Sottomissione : invia      >
+  Hackathon "1" *-- "*"   Sottomissione : > raccoglie
+  Team      "1" -- "*"    Sottomissione : invia >
 
-  Sottomissione "1" *-- "*" Valutazione : valutazioni
-  Valutazione   "*" -- "1"  Giudice     : firmata da >
+  Sottomissione "1" *-- "*" Valutazione : > valutazioni
+  Valutazione  "*" -- "1"   Giudice     : firmata da >
 }
 
-' =====================  CONNESSIONI CONTROL → ENTITY  =====================
+' ============================================================================
+'  CONNESSIONI CONTROL → ENTITY (raggruppate per UC)
+' ============================================================================
 
-CreaHackathonControl       ..> HackHub          : usa
-CreaHackathonControl       ..> Hackathon        : crea
-CreaHackathonControl       ..> Organizzatore    : associa
-CreaHackathonControl       ..> Giudice          : associa
-CreaHackathonControl       ..> Mentore          : associa
+' --- UC02 ---
+CreaHackathonControl ..> HackHub         : registra
+CreaHackathonControl ..> Hackathon       : crea
 
-IscriviTeamControl         ..> Hackathon        : usa
-IscriviTeamControl         ..> Team             : iscrive
+' --- UC03 ---
+IscriviTeamControl   ..> Hackathon       : iscrive in
+IscriviTeamControl   ..> Team            : iscrive
 
-InviaSottomissioneControl  ..> Hackathon        : verifica
-InviaSottomissioneControl  ..> Team             : risale al
-InviaSottomissioneControl  ..> Sottomissione    : crea
+' --- UC04 ---
+InviaSottomissioneControl ..> Hackathon     : verifica
+InviaSottomissioneControl ..> Sottomissione : crea
 
-ValutaSottomissioneControl ..> Hackathon        : verifica
-ValutaSottomissioneControl ..> Sottomissione    : recupera
-ValutaSottomissioneControl ..> Valutazione      : crea
-ValutaSottomissioneControl ..> Giudice          : firma con
+' --- UC05 ---
+ValutaSottomissioneControl ..> Sottomissione : aggiorna
+ValutaSottomissioneControl ..> Valutazione   : crea
 
+' ============================================================================
+'  NOTE compatte
+' ============================================================================
 note bottom of HackHub
-  HackHub è la **radice** del modello
-  (root facade leggera, **non** Singleton —
-  istanza unica gestita esplicitamente).
-  GRASP: Information Expert per le
-  query "tutti gli hackathon", "tutti gli utenti".
+  Radice del modello — **non Singleton**.
+  GRASP: Information Expert.
 end note
 
-note right of Hackathon
-  Il **ciclo di vita** dell'Hackathon
-  (InIscrizione → InCorso → InValutazione → Conclusa)
-  è realizzato in **progettazione** dal pattern **State**:
-  qui, in analisi, è solo l'attributo `statoCorrente`.
+note bottom of Hackathon
+  ``statoCorrente`` qui è un attributo;
+  in progetto diventa pattern **State**.
 end note
 
-note right of Valutazione
+note bottom of Valutazione
   Invariante:
-  punteggio ∈ [0, 10]
-  giudizioScritto ≠ ∅
+  ``punteggio`` ∈ [0..10], ``giudizioScritto`` ≠ ∅.
 end note
 
+' ============================================================================
+'  LEGENDA
+' ============================================================================
 legend right
-  ============================
-  **Convenzioni BCE**
-  ============================
-  | Stereotipo | Ruolo |
-  | <<boundary>> | interfaccia attore |
-  | <<control>>  | coordinatore di un UC |
-  | <<entity>>   | oggetto di dominio |
-  ----------------------------
-  Le control sono indipendenti
-  (una per UC); condividono il
-  modello entity.
+  ==
+  **Convenzioni BCE (Jacobson)**
+  ==
+  | Stereotipo    | Ruolo                  |
+  | <<boundary>>  | interfaccia attore     |
+  | <<control>>   | coordinatore di un UC  |
+  | <<entity>>    | oggetto di dominio     |
+  ----
+  Le control sono indipendenti (1 per UC);
+  condividono il modello entity.
 endlegend
 
 @enduml
