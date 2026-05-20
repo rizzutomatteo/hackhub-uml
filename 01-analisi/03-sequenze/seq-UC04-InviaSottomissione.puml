@@ -1,0 +1,131 @@
+@startuml SeqUC04_InviaSottomissione
+title Diagramma di Sequenza - UC04 Invia Sottomissione\nPattern coinvolti: State (verifica), Factory Method + Observer (notifica giudici)
+
+skinparam sequence {
+  ArrowColor              #2C3E50
+  LifeLineBorderColor     #2C3E50
+  ParticipantBorderColor  #2C3E50
+  ActorBorderColor        #2C3E50
+  ParticipantBackgroundColor<<boundary>> #E3F2FD
+  ParticipantBackgroundColor<<control>>  #FFF8E1
+  ParticipantBackgroundColor<<entity>>   #E8F5E9
+}
+
+actor      "Membro Team"                                  as MT
+boundary   ":InviaSottomissioneBoundary"                  as B    <<boundary>>
+control    ":InviaSottomissioneControl"                   as C    <<control>>
+entity     ":HackHub"                                     as Hub  <<entity>>
+entity     "t:Team"                                       as T    <<entity>>
+entity     "h:Hackathon"                                  as H    <<entity>>
+participant "<<State>>\nstato:StatoHackathon"              as S
+entity     "s:Sottomissione"                              as Sub  <<entity>>
+participant "<<Observer>>\npub:NotificaPublisher"          as Pub
+participant "<<Factory Method>>\n:NotificaConsole"         as Fac
+
+== Apertura form ==
+
+MT -> B : apriFormSottomissione(idH)
+activate B
+B  -> C : preparaForm(idH, utente)
+activate C
+C  -> Hub : trovaTeamDi(utente)
+activate Hub
+Hub --> C : t
+deactivate Hub
+C  -> Hub : trovaHackathon(idH)
+activate Hub
+Hub --> C : h
+deactivate Hub
+C  --> B : datiForm(t, h)
+deactivate C
+B  --> MT : mostraForm(t, h)
+deactivate B
+
+== Invio ==
+
+MT -> B : inviaSottomissione(titolo, descrizione, link)
+activate B
+B  -> C : creaSottomissione(t, h, titolo, descrizione, link)
+activate C
+
+== Pattern State: lo stato attuale ammette la sottomissione? ==
+
+C  -> H : puoiSottomettere()
+activate H
+H  -> S : puoiSottomettere()
+activate S
+S  --> H : esito
+deactivate S
+H  --> C : esito
+deactivate H
+
+alt esito = true (stato = InCorso)
+    note right of S
+      **State** — solo ``InCorso`` consente
+      la sottomissione. ``InIscrizione``,
+      ``InValutazione`` e ``Conclusa``
+      ereditano ``false`` dall'interfaccia.
+    end note
+
+    C  -> H : iscrizioneAttiva(t)
+    activate H
+    H  --> C : true / false
+    deactivate H
+
+    alt team iscritto e non scaduto
+        C  -> H : sottomissioneEsistente(t)
+        activate H
+        H  --> C : exists?
+        deactivate H
+
+        opt sostituzione esistente (UC15 Aggiorna Sottomissione)
+            C  -> Sub : marcaSostituita()
+        end
+
+        create Sub
+        C  -> Sub : <<create>>(t, h, titolo, descrizione, link, adesso)
+
+        C  -> H : aggiungiSottomissione(s)
+        activate H
+
+        == Pattern Observer + Factory Method: notifica giudici ==
+
+        H  -> Pub : aggiorna(SOTTOMISSIONE_RICEVUTA, h, t, s)
+        activate Pub
+        Pub -> Fac : creaNotifica(evento, giudice(h))
+        activate Fac
+        create "n:Notifica" as N
+        Fac -> N : <<create>>(destinatario, contenuto)
+        Fac --> Pub : n
+        deactivate Fac
+        Pub -> N : invia()
+        deactivate Pub
+
+        H  --> C : ok
+        deactivate H
+
+        C  --> B : esitoSuccesso(s)
+        B  --> MT : mostraConferma(s)
+    else team non iscritto o scadenza superata
+        C  --> B : esitoErrore(motivo)
+        B  --> MT : mostraErrore(motivo)
+    end
+else stato non ammette
+    C  --> B : esitoErrore("Sottomissioni non aperte")
+    B  --> MT : mostraErrore("Sottomissioni non aperte")
+end
+
+deactivate C
+deactivate B
+
+note over Pub, Fac
+  L'integrazione Observer + Factory Method
+  centralizza la **creazione polimorfa** della
+  notifica (console, email, push, …) senza
+  toccare ``Hackathon`` né i ``Control``.
+  Anti-pattern evitato: ``new`` di sottoclassi
+  concrete sparso nei controller (GRASP: Pure
+  Fabrication + Protected Variations).
+end note
+
+@enduml

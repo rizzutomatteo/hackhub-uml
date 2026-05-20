@@ -1,0 +1,373 @@
+@startuml ClassiDiProgetto_HackHub
+title Diagramma delle Classi di Progetto — HackHub, 1a iterazione\n(architettura a strati: boundary → control → model + repository)
+
+' ============================================================================
+'  CONVENZIONI DI PROGETTO
+'  ------------------------------------------------------------
+'  visibilità : + public, - private, # protected, ~ package
+'  In analisi BCE le boundary erano "interfacce attore";
+'  in progetto sono concretizzate dalla CLI ``*Boundary``.
+'
+'  4 DESIGN PATTERN ESPLICITAMENTE EVIDENZIATI:
+'   1. State           (model.state)
+'   2. Strategy        (model.strategy)
+'   3. Observer        (model.observer)
+'   4. Factory Method  (model.factory)
+' ============================================================================
+
+skinparam class {
+  BackgroundColor       #FAFAFA
+  BorderColor           #2C3E50
+  ArrowColor            #2C3E50
+  FontSize              11
+}
+skinparam packageStyle rectangle
+
+' ====================================================================
+'  STRATO BOUNDARY  (CLI per la 1a iterazione)
+' ====================================================================
+package "boundary  (presentation: CLI)" #E3F2FD {
+
+  class Main {
+    + main(args : String[]) : void
+    - menuPrincipale() : void
+  }
+
+  class CreaHackathonBoundary {
+    - control : CreaHackathonControl
+    + esegui() : void
+  }
+  class IscriviTeamBoundary {
+    - control : IscriviTeamControl
+    + esegui() : void
+  }
+  class InviaSottomissioneBoundary {
+    - control : InviaSottomissioneControl
+    + esegui() : void
+  }
+  class ValutaSottomissioneBoundary {
+    - control : ValutaSottomissioneControl
+    + esegui() : void
+  }
+}
+
+' ====================================================================
+'  STRATO CONTROL  (un controller per UC, GRASP Controller)
+' ====================================================================
+package "control  (use-case handlers)" #FFF8E1 {
+
+  class CreaHackathonControl {
+    - hackHub : HackHub
+    + crea(\n  nome : String, regolamento : String,\n  scadenzaIscrizioni : LocalDate, dataInizio : LocalDate,\n  dataFine : LocalDate, luogo : String, premio : double,\n  dimensioneMaxTeam : int, organizzatore : Organizzatore,\n  giudice : Giudice, mentori : List<Mentore>\n) : Hackathon
+  }
+
+  class IscriviTeamControl {
+    - hackHub : HackHub
+    + iscrivi(idH : String, utente : Utente) : Team
+  }
+
+  class InviaSottomissioneControl {
+    - hackHub : HackHub
+    + invia(\n  idH : String, utente : Utente,\n  titolo : String, descrizione : String, link : String\n) : Sottomissione
+  }
+
+  class ValutaSottomissioneControl {
+    - hackHub : HackHub
+    + valuta(\n  idS : String, giudice : Giudice,\n  punteggio : int, giudizioScritto : String\n) : Valutazione
+  }
+}
+
+' ====================================================================
+'  STRATO MODEL  (dominio + 4 design pattern)
+' ====================================================================
+
+package "model  (dominio)" #E8F5E9 {
+
+  class HackHub {
+    - nome : String
+    - hackathonRepo : HackathonRepository
+    - teamRepo : TeamRepository
+    - utenteRepo : UtenteRepository
+    + registraHackathon(h : Hackathon) : void
+    + trovaHackathon(id : String) : Hackathon
+    + trovaTeamDi(u : Utente) : Team
+    + hackathonInIscrizione() : List<Hackathon>
+  }
+
+  class Utente {
+    - id : String
+    - nome : String
+    - cognome : String
+    - email : String
+    - password : String
+    + getId() : String
+    + getEmail() : String
+  }
+
+  abstract class MembroStaff {
+    # hackathonAssegnati : List<Hackathon>
+    + assegnaA(h : Hackathon) : void
+    + hackathonAssegnati() : List<Hackathon>
+  }
+  class Organizzatore
+  class Giudice
+  class Mentore
+
+  class Team {
+    - id : String
+    - nome : String
+    - membri : List<Utente>
+    + aggiungiMembro(u : Utente) : void
+    + numeroMembri() : int
+    + contieneMembro(u : Utente) : boolean
+  }
+
+  class Hackathon {
+    - id : String
+    - nome : String
+    - regolamento : String
+    - scadenzaIscrizioni : LocalDate
+    - dataInizio : LocalDate
+    - dataFine : LocalDate
+    - luogo : String
+    - premio : double
+    - dimensioneMaxTeam : int
+    - organizzatore : Organizzatore
+    - giudice : Giudice
+    - mentori : List<Mentore>
+    - teamIscritti : List<Team>
+    - sottomissioni : List<Sottomissione>
+    - stato : StatoHackathon
+    - strategiaPunteggio : StrategiaPunteggio
+    - osservatori : List<Osservatore>
+    + impostaStato(s : StatoHackathon) : void
+    + puoiIscrivereTeam() : boolean
+    + puoiSottomettere() : boolean
+    + puoiValutare() : boolean
+    + puoiProclamare() : boolean
+    + iscriviTeam(t : Team) : void
+    + aggiungiSottomissione(s : Sottomissione) : void
+    + tutteSottomissioniValutate() : boolean
+    + aggiungiOsservatore(o : Osservatore) : void
+    + rimuoviOsservatore(o : Osservatore) : void
+    + notifica(e : EventoHackathon) : void
+    + setStrategiaPunteggio(s : StrategiaPunteggio) : void
+  }
+
+  class Sottomissione {
+    - id : String
+    - team : Team
+    - hackathon : Hackathon
+    - titolo : String
+    - descrizione : String
+    - link : String
+    - timestampInvio : Instant
+    - valutazioni : List<Valutazione>
+    - punteggioAggregato : double
+    + aggiungiValutazione(v : Valutazione) : void
+    + èValutataDa(g : Giudice) : boolean
+    + ricalcolaPunteggio(s : StrategiaPunteggio) : void
+  }
+
+  class Valutazione {
+    - id : String
+    - giudice : Giudice
+    - punteggio : int
+    - giudizioScritto : String
+    - timestamp : Instant
+    + getPunteggio() : int
+  }
+
+  Utente        <|-- MembroStaff
+  MembroStaff   <|-- Organizzatore
+  MembroStaff   <|-- Giudice
+  MembroStaff   <|-- Mentore
+
+  HackHub    "1" *-- "*" Hackathon       : > hackathon
+  HackHub    "1" *-- "*" Utente          : > utenti
+  HackHub    "1" *-- "*" Team            : > team
+
+  Hackathon  "*" -- "1"   Organizzatore  : creatore   >
+  Hackathon  "*" -- "1"   Giudice        : valutatore >
+  Hackathon  "*" -- "1..*" Mentore       : staff      >
+
+  Hackathon  "*" -- "*"   Team            : iscrizioni >
+  Team       "1" o-- "1..*" Utente        : membri      >
+
+  Hackathon  "1" *-- "*"  Sottomissione  : > sottomissioni
+  Team       "1" -- "*"   Sottomissione  : invia >
+
+  Sottomissione "1" *-- "*" Valutazione  : > valutazioni
+  Valutazione  "*" -- "1"  Giudice       : firmata da >
+}
+
+' ====================================================================
+'  PATTERN 1: STATE — ciclo di vita Hackathon
+' ====================================================================
+package "model.state  <<pattern State>>" #FFF3E0 {
+
+  interface StatoHackathon {
+    + puoiIscrivereTeam() : boolean
+    + puoiSottomettere() : boolean
+    + puoiValutare() : boolean
+    + puoiProclamare() : boolean
+    + avvia(h : Hackathon) : void
+    + apriValutazione(h : Hackathon) : void
+    + concludi(h : Hackathon) : void
+    + nome() : String
+  }
+  class InIscrizione  implements StatoHackathon
+  class InCorso       implements StatoHackathon
+  class InValutazione implements StatoHackathon
+  class Conclusa      implements StatoHackathon
+}
+Hackathon "1" o-- "1" StatoHackathon : statoCorrente >
+InIscrizione  ..> InCorso       : <<transition>>
+InCorso       ..> InValutazione : <<transition>>
+InValutazione ..> Conclusa      : <<transition>>
+
+' ====================================================================
+'  PATTERN 2: STRATEGY — calcolo punteggio aggregato
+' ====================================================================
+package "model.strategy  <<pattern Strategy>>" #FCE4EC {
+
+  interface StrategiaPunteggio {
+    + calcola(valutazioni : List<Valutazione>) : double
+    + nome() : String
+  }
+  class MediaSemplice implements StrategiaPunteggio
+  class MediaPesata   implements StrategiaPunteggio {
+    - pesi : Map<String, Double>
+  }
+}
+Hackathon "1" o-- "1" StrategiaPunteggio : strategiaPunteggio >
+
+' ====================================================================
+'  PATTERN 3: OBSERVER — propagazione eventi di ciclo vita
+' ====================================================================
+package "model.observer  <<pattern Observer>>" #E1F5FE {
+
+  enum EventoHackathon {
+    HACKATHON_CREATO
+    TEAM_ISCRITTO
+    SOTTOMISSIONE_RICEVUTA
+    VALUTAZIONI_COMPLETE
+    VINCITORE_PROCLAMATO
+  }
+
+  interface Soggetto {
+    + aggiungiOsservatore(o : Osservatore) : void
+    + rimuoviOsservatore(o : Osservatore) : void
+    + notifica(e : EventoHackathon) : void
+  }
+
+  interface Osservatore {
+    + aggiorna(soggetto : Soggetto, evento : EventoHackathon) : void
+  }
+
+  class LoggerEventi implements Osservatore
+}
+Hackathon ..|> Soggetto
+
+' ====================================================================
+'  PATTERN 4: FACTORY METHOD — creazione polimorfa di notifiche
+' ====================================================================
+package "model.factory  <<pattern Factory Method>>" #F3E5F5 {
+
+  abstract class NotificaPublisher implements Osservatore {
+    + aggiorna(s : Soggetto, e : EventoHackathon) : void
+    # {abstract} creaNotifica(e : EventoHackathon, destinatario : Utente) : Notifica
+  }
+  class NotificaConsole extends NotificaPublisher
+  class NotificaEmail   extends NotificaPublisher
+
+  abstract class Notifica {
+    # destinatario : Utente
+    # contenuto    : String
+    + {abstract} invia() : void
+  }
+  class NotificaConsoleMsg extends Notifica
+  class NotificaEmailMsg   extends Notifica
+}
+NotificaConsole ..> NotificaConsoleMsg : <<creates>>
+NotificaEmail   ..> NotificaEmailMsg   : <<creates>>
+
+' ====================================================================
+'  STRATO REPOSITORY  (DAO in-memory)
+' ====================================================================
+package "repository  (DAO in-memory)" #ECEFF1 {
+
+  class HackathonRepository {
+    - byId : Map<String, Hackathon>
+    + salva(h : Hackathon) : void
+    + trovaPerId(id : String) : Hackathon
+    + tutti() : List<Hackathon>
+    + filtraPerStato(nomeStato : String) : List<Hackathon>
+  }
+  class TeamRepository {
+    + salva(t : Team) : void
+    + trovaPerId(id : String) : Team
+    + trovaPerMembro(u : Utente) : Team
+  }
+  class UtenteRepository {
+    + salva(u : Utente) : void
+    + trovaPerId(id : String) : Utente
+    + tutti() : List<Utente>
+  }
+}
+HackHub ..> HackathonRepository
+HackHub ..> TeamRepository
+HackHub ..> UtenteRepository
+
+' ====================================================================
+'  ECCEZIONI
+' ====================================================================
+package "exception" #FFEBEE {
+  class StatoNonValidoException
+  class ScadenzaSuperataException
+  class ViolazioneInvarianteException
+}
+
+' ====================================================================
+'  DEPENDENCIES inter-strato
+' ====================================================================
+Main --> CreaHackathonBoundary
+Main --> IscriviTeamBoundary
+Main --> InviaSottomissioneBoundary
+Main --> ValutaSottomissioneBoundary
+
+CreaHackathonBoundary       --> CreaHackathonControl
+IscriviTeamBoundary         --> IscriviTeamControl
+InviaSottomissioneBoundary  --> InviaSottomissioneControl
+ValutaSottomissioneBoundary --> ValutaSottomissioneControl
+
+CreaHackathonControl       --> HackHub
+IscriviTeamControl         --> HackHub
+InviaSottomissioneControl  --> HackHub
+ValutaSottomissioneControl --> HackHub
+
+CreaHackathonControl       ..> Hackathon : <<crea>>
+InviaSottomissioneControl  ..> Sottomissione : <<crea>>
+ValutaSottomissioneControl ..> Valutazione : <<crea>>
+
+legend right
+  ============================
+  **Pattern usati (≥2 diversi da Singleton)**
+  ============================
+  1. **State**          — ciclo di vita Hackathon
+  2. **Strategy**       — calcolo punteggio aggregato
+  3. **Observer**       — propagazione eventi
+  4. **Factory Method** — creazione polimorfa di notifiche
+  ----------------------------
+  **Stratificazione**
+  presentation → control → model → repository
+  ----------------------------
+  **GRASP applicati**
+  - Controller (1 per UC)
+  - Information Expert (Sottomissione calcola, HackHub cerca)
+  - Polymorphism (State, Strategy)
+  - Pure Fabrication (Publisher, Repository)
+  - Protected Variations (interfacce State / Strategy / Osservatore)
+endlegend
+
+@enduml

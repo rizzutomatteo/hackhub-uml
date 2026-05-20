@@ -1,0 +1,141 @@
+@startuml DiagrammaCasiUso_HackHub
+title Diagramma dei Casi d'Uso - HackHub (1a iterazione)
+
+skinparam usecase {
+  BackgroundColor #FDFDFD
+  BorderColor #2C3E50
+  ArrowColor #2C3E50
+}
+skinparam actor {
+  BackgroundColor #ECF0F1
+  BorderColor #2C3E50
+}
+skinparam packageStyle rectangle
+
+left to right direction
+
+' =====================  ATTORI  =====================
+
+actor "Visitatore"           as Vis
+actor "Utente"               as Ute
+actor "Membro Team"          as MT
+actor "Membro Staff"         as MS
+actor "Organizzatore"        as Org
+actor "Giudice"              as Giu
+actor "Mentore"              as Men
+
+' Attori esterni / sistemi (lato destro)
+actor "Calendar"             as Cal  <<external>>
+actor "Sistema di Pagamento" as Pag  <<external>>
+
+' Gerarchia attori (generalizzazione)
+Vis <|-- Ute
+Ute <|-- MT
+Ute <|-- MS
+MS  <|-- Org
+MS  <|-- Giu
+MS  <|-- Men
+
+' =====================  SYSTEM BOUNDARY  =====================
+
+rectangle "HackHub" {
+
+  ' --- Visitatore / Autenticazione ---
+  usecase "UC01\nRegistrazione"                   as UC01
+  usecase "UC06\nAutenticazione"                  as UC06
+  usecase "UC07\nConsulta Hackathon\nPubblici"    as UC07
+
+  ' --- Organizzatore ---
+  usecase "**UC02**\n**Crea Hackathon**"          as UC02 #FFE082
+  usecase "UC08\nAggiungi Mentore"                as UC08
+  usecase "UC09\nProclama Vincitore"              as UC09
+  usecase "UC10\nEroga Premio"                    as UC10
+
+  ' --- Utente / Membro Team ---
+  usecase "UC11\nCrea Team"                       as UC11
+  usecase "UC12\nInvita Membri al Team"           as UC12
+  usecase "UC13\nAccetta Invito Team"             as UC13
+  usecase "UC14\nRifiuta Invito Team"             as UC14
+  usecase "**UC03**\n**Iscrivi Team**\n**a Hackathon**" as UC03 #FFE082
+  usecase "**UC04**\n**Invia Sottomissione**"     as UC04 #FFE082
+  usecase "UC15\nAggiorna Sottomissione"          as UC15
+  usecase "UC16\nRichiedi Supporto\nal Mentore"   as UC16
+
+  ' --- Mentore ---
+  usecase "UC17\nVisualizza Richieste\nSupporto"  as UC17
+  usecase "UC18\nProponi Call al Team"            as UC18
+  usecase "UC19\nSegnala Team"                    as UC19
+
+  ' --- Giudice ---
+  usecase "**UC05**\n**Valuta Sottomissione**"    as UC05 #FFE082
+
+  ' --- Membro Staff (generale) ---
+  usecase "UC20\nVisualizza Sottomissioni"        as UC20
+  usecase "UC21\nVisualizza Tutti\ngli Hackathon" as UC21
+
+  ' --- Transizioni interne (system, non innescate da attori) ---
+  usecase "UC22\nAvvia Hackathon"                 as UC22 <<system>>
+  usecase "UC23\nChiudi Iscrizioni"               as UC23 <<system>>
+  usecase "UC24\nTermina Hackathon"               as UC24 <<system>>
+}
+
+' =====================  ASSOCIAZIONI ATTORE-UC  =====================
+
+Vis --> UC01
+Vis --> UC07
+
+Ute --> UC06
+Ute --> UC11
+Ute --> UC13
+Ute --> UC14
+
+MT  --> UC03
+MT  --> UC04
+MT  --> UC15
+MT  --> UC16
+MT  --> UC12
+
+Org --> UC02
+Org --> UC08
+Org --> UC09
+Org --> UC10
+
+Men --> UC17
+Men --> UC18
+Men --> UC19
+
+Giu --> UC05
+
+MS  --> UC20
+MS  --> UC21
+
+' Attori esterni (secondari)
+UC18 --> Cal
+UC10 --> Pag
+
+' =====================  INCLUDE / EXTEND  =====================
+
+UC02 ..> UC06 : <<include>>
+UC03 ..> UC06 : <<include>>
+UC04 ..> UC06 : <<include>>
+UC05 ..> UC06 : <<include>>
+UC09 ..> UC06 : <<include>>
+UC11 ..> UC06 : <<include>>
+UC11 ..> UC12 : <<include>>
+UC09 ..> UC10 : <<include>>
+
+UC15 ..> UC04 : <<extend>>\n(entro scadenza)
+
+legend right
+  ============================
+  **Legenda**
+  ============================
+  | Stile | Significato |
+  | <#FFE082> giallo | UC implementato 1a iterazione |
+  | <<external>>     | attore esterno |
+  | <<system>>       | transizione interna |
+  ----------------------------
+  Notazione UML 2 standard.
+endlegend
+
+@enduml

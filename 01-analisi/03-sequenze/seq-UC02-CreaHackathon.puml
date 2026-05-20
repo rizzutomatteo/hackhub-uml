@@ -1,0 +1,98 @@
+@startuml SeqUC02_CreaHackathon
+title Diagramma di Sequenza - UC02 Crea Hackathon\nPattern coinvolti: Factory Method (NotificaPublisher), Observer, State (inizializzazione)
+
+skinparam sequence {
+  ArrowColor              #2C3E50
+  LifeLineBorderColor     #2C3E50
+  ParticipantBorderColor  #2C3E50
+  ActorBorderColor        #2C3E50
+  ParticipantBackgroundColor<<boundary>> #E3F2FD
+  ParticipantBackgroundColor<<control>>  #FFF8E1
+  ParticipantBackgroundColor<<entity>>   #E8F5E9
+}
+
+actor      "Organizzatore"                              as Org
+boundary   ":CreaHackathonBoundary"                     as B  <<boundary>>
+control    ":CreaHackathonControl"                      as C  <<control>>
+entity     ":HackHub"                                   as Hub <<entity>>
+entity     "h:Hackathon"                                as H   <<entity>>
+participant "<<State>>\n:InIscrizione"                   as S
+participant "<<Observer>>\npub:NotificaPublisher"        as Pub
+participant "<<Factory Method>>\n:NotificaConsole"       as Fac
+
+== Apertura form ==
+
+Org -> B  : apriFormCreazione()
+activate B
+B  --> Org : mostraForm()
+deactivate B
+
+== Inserimento e conferma ==
+
+Org -> B  : inserisciDati(nome, regolamento, scadenzaIscrizioni,\n dataInizio, dataFine, luogo, premio,\n maxTeam, idGiudice, idMentori)
+activate B
+B  -> C  : creaHackathon(dati)
+activate C
+
+C  -> C  : validaDati()
+
+alt dati validi
+    create H
+    C  -> H  : <<create>>(dati)
+    create S
+    C  -> S  : <<create>>
+    C  -> H  : impostaStato(s)
+
+    C  -> Hub : registraHackathon(h)
+    activate Hub
+    Hub --> C : ok
+    deactivate Hub
+
+    == Pattern Observer: notifica HACKATHON_CREATO ==
+
+    C  -> H  : notifica(HACKATHON_CREATO)
+    activate H
+    H  -> Pub : aggiorna(evento)
+    activate Pub
+
+    note right of Pub
+      **Factory Method** — il publisher
+      delega la **creazione del prodotto**
+      ``Notifica`` alla propria sottoclasse
+      concreta (``NotificaConsole``).
+      Il publisher è anche un
+      **Observer** registrato sul soggetto
+      ``Hackathon``.
+    end note
+
+    Pub -> Fac : creaNotifica(evento, destinatari)
+    activate Fac
+    create "n:Notifica" as N
+    Fac -> N : <<create>>
+    Fac --> Pub : n
+    deactivate Fac
+
+    Pub -> N : invia()
+    deactivate Pub
+    deactivate H
+
+    C  --> B : esitoSuccesso(h)
+    deactivate C
+    B  --> Org : mostraConferma(h)
+    deactivate B
+else dati non validi
+    C  --> B : esitoErrore(campo, motivo)
+    deactivate C
+    B  --> Org : mostraErrore(campo, motivo)
+    deactivate B
+end
+
+note over S
+  **State** — l'Hackathon nasce sempre
+  con stato concreto ``InIscrizione``.
+  Le transizioni successive
+  (avvia/apriValutazione/concludi)
+  saranno gestite dagli state stessi.
+end note
+
+@enduml

@@ -1,0 +1,134 @@
+@startuml SeqUC05_ValutaSottomissione
+title Diagramma di Sequenza - UC05 Valuta Sottomissione\nPattern coinvolti: State (verifica), Strategy (calcolo punteggio), Observer (VALUTAZIONI_COMPLETE)
+
+skinparam sequence {
+  ArrowColor              #2C3E50
+  LifeLineBorderColor     #2C3E50
+  ParticipantBorderColor  #2C3E50
+  ActorBorderColor        #2C3E50
+  ParticipantBackgroundColor<<boundary>> #E3F2FD
+  ParticipantBackgroundColor<<control>>  #FFF8E1
+  ParticipantBackgroundColor<<entity>>   #E8F5E9
+}
+
+actor      "Giudice"                                       as Giu
+boundary   ":ValutaSottomissioneBoundary"                  as B    <<boundary>>
+control    ":ValutaSottomissioneControl"                   as C    <<control>>
+entity     ":HackHub"                                      as Hub  <<entity>>
+entity     "h:Hackathon"                                   as H    <<entity>>
+participant "<<State>>\nstato:StatoHackathon"               as S
+entity     "s:Sottomissione"                               as Sub  <<entity>>
+entity     "v:Valutazione"                                 as V    <<entity>>
+participant "<<Strategy>>\nstr:StrategiaPunteggio"          as Str
+participant "<<Observer>>\npub:NotificaPublisher"           as Pub
+
+== Lista sottomissioni da valutare ==
+
+Giu -> B : richiediSottomissioni(idH)
+activate B
+B  -> C : elencaSottomissioniDaValutare(idH, giudice)
+activate C
+C  -> Hub : trovaHackathon(idH)
+activate Hub
+Hub --> C : h
+deactivate Hub
+C  -> H : sottomissioniNonValutateDa(giudice)
+activate H
+H  --> C : lista
+deactivate H
+C  --> B : lista
+deactivate C
+B  --> Giu : mostraLista(lista)
+deactivate B
+
+== Selezione e inserimento valutazione ==
+
+Giu -> B : selezionaSottomissione(idS)
+activate B
+B  --> Giu : mostraDettagli(s)
+deactivate B
+
+Giu -> B : inserisciValutazione(idS, punteggio, giudizioScritto)
+activate B
+B  -> C : valuta(idS, giudice, punteggio, giudizioScritto)
+activate C
+
+== Pattern State: ammette la valutazione? ==
+
+C  -> H : puoiValutare()
+activate H
+H  -> S : puoiValutare()
+activate S
+S  --> H : esito
+deactivate S
+H  --> C : esito
+deactivate H
+
+alt esito = true (stato = InValutazione)
+
+    C  -> C  : verificaRange(punteggio)\n[0..10]
+
+    alt range valido
+        create V
+        C  -> V : <<create>>(giudice, punteggio, giudizioScritto, adesso)
+
+        C  -> Sub : aggiungiValutazione(v)
+        activate Sub
+
+        == Pattern Strategy: ricalcolo punteggio aggregato ==
+
+        Sub -> H : strategiaPunteggio()
+        activate H
+        H  --> Sub : str
+        deactivate H
+
+        Sub -> Str : calcola(valutazioni)
+        activate Str
+
+        note right of Str
+          **Strategy** — l'algoritmo è
+          intercambiabile a runtime
+          (default: ``MediaSemplice``).
+          ``Sottomissione`` non conosce
+          la formula, solo l'interfaccia
+          ``StrategiaPunteggio``.
+        end note
+
+        Str --> Sub : punteggioAggregato
+        deactivate Str
+
+        Sub -> Sub : aggiornaPunteggioAggregato(p)
+        deactivate Sub
+
+        == Pattern Observer: ultima valutazione → VALUTAZIONI_COMPLETE ==
+
+        C  -> H : tutteSottomissioniValutate()
+        activate H
+        H  --> C : flag
+        deactivate H
+
+        opt flag = true
+            C  -> H : notifica(VALUTAZIONI_COMPLETE)
+            activate H
+            H  -> Pub : aggiorna(VALUTAZIONI_COMPLETE, h)
+            activate Pub
+            Pub --> H : ok
+            deactivate Pub
+            deactivate H
+        end
+
+        C  --> B : esitoSuccesso(v)
+        B  --> Giu : mostraConferma(v)
+    else punteggio fuori range
+        C  --> B : esitoErrore("Punteggio fuori range 0..10")
+        B  --> Giu : mostraErrore(...)
+    end
+else stato non ammette
+    C  --> B : esitoErrore("Hackathon non in valutazione")
+    B  --> Giu : mostraErrore(...)
+end
+
+deactivate C
+deactivate B
+
+@enduml
