@@ -1,0 +1,2 @@
+File di esempio numero 1.
+Serve solo per provare un commit.
